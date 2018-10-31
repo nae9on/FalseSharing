@@ -50,9 +50,9 @@ class Stopwatch {
         void start();
         void stop();
         myStruct read();
-		void resume();
-		bool running();
-		void showTime(std::string);
+        void resume();
+        bool running();
+        void showTime(std::string);
 };
 
 //! Creates a Stopwatch (not yet running!)
