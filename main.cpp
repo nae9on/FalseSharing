@@ -13,45 +13,30 @@
 #include <cmath>
 #include <time.h>
 
-#define BILLION  1000000000L;
+#include"stopwatch.h"
 
-int main()
-{
-struct timespec start, stop;
-double accum;
+void case1(unsigned nx, unsigned ny, unsigned nz, unsigned NUM_THREADS) {
 
-if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) {
-	perror( "clock gettime" );
-	exit( EXIT_FAILURE );
-}
+   // Allocate dynamic memory of type double and size nx*ny*nz
+	double* gridData = new double[nx * ny * nz]();
 
-std::cout<<"In the main function for illustrating false_sharing\n";
-printf("Max no of threads = %d\n",omp_get_max_threads());
-
-unsigned int nx=1000, ny=1000, nz=100;
-
-// Allocate dynamic memory of type double and size nx*ny*nz
-double* gridData = new double[nx * ny * nz] ();
-
-#pragma omp parallel default(none) \
+#pragma omp parallel default(none) num_threads(NUM_THREADS)\
 shared(nx, ny, nz, gridData, std::cout)
 	{
-	int id = omp_get_thread_num(); // This is a run-time library routine.
-	int total = omp_get_num_threads();
-	if (id==0) {
-		printf("I am the master thread with id = %d and total threads = %d\n", id, total);
-	}
+		unsigned id = omp_get_thread_num(); // This is a run-time library routine.
+		unsigned total = omp_get_num_threads();
+		if (id==0) printf("Total threads executing the parallel region = %d\n", total);
 
 #pragma omp for schedule(dynamic,1)
-		for (unsigned int kk = 0; kk < nz; kk++)
-			for (unsigned int jj = 0; jj < ny; jj++)
-				for (unsigned int ii = 0; ii < nx; ii++) {
-					int idx = ii + nx * jj + nx * ny * kk;
+		for (unsigned kk = 0; kk < nz; kk++)
+			for (unsigned jj = 0; jj < ny; jj++)
+				for (unsigned ii = 0; ii < nx; ii++) {
+					unsigned long int idx = ii + nx * jj + nx * ny * kk;
 
 					double value = 0;
 
-					unsigned int nStencil = 10;
-					for (unsigned int itr = 0; itr < nStencil; itr++) {
+					unsigned nStencil = 10;
+					for (unsigned itr = 0; itr < nStencil; itr++) {
 						value += exp(-1);
 					}
 
@@ -59,21 +44,26 @@ shared(nx, ny, nz, gridData, std::cout)
 				} // End of nested for
 
 	} // End of pragma
-
-delete[] gridData;
-
-if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) {
-	perror( "clock gettime" );
-	exit( EXIT_FAILURE );
+	delete[] gridData;
 }
 
-accum = (stop.tv_sec - start.tv_sec)+(stop.tv_nsec - start.tv_nsec)/BILLION;
+int main() {
+	printf("Max no of threads = %d\n\n", omp_get_max_threads());
 
-int Hours = accum/3600;
-int Minutes = (accum-Hours*3600)/60;
-int Seconds = accum - Hours*3600 - Minutes*60;
-std::cout<<"\nElapsed time = "<<Hours<<":"<<Minutes<<":"<<Seconds<<"\n";
+	mymisc::Stopwatch mainWatch, watch;
+	mainWatch.start();
 
-std::cout<<"End main\n";
-return 0;
+	watch.start();
+	case1(1000,1000,100,1);
+	watch.stop();
+	watch.showTime("case1");
+
+	watch.start();
+	case1(1000,1000,100,1);
+	watch.stop();
+	watch.showTime("case1");
+
+	mainWatch.stop();
+	mainWatch.showTime("End main");
+	return 0;
 }
