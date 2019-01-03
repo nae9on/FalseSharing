@@ -15,58 +15,78 @@
 
 #include"stopwatch.h"
 
-const double xOrigin(-1), yOrigin(-0.5), zOrigin(-0.5), delta(0.01);
+const double xOrigin(0), yOrigin(0), zOrigin(0), delta(1);
 
-void case1(unsigned nx, unsigned ny, unsigned nz, unsigned NUM_THREADS) {
+void calc_exp(unsigned col, unsigned row, unsigned NUM_THREADS,
+		unsigned nStencil) {
 
-	// Allocate dynamic memory of type double and size nx*ny*nz
-	double* gridData = new double[nx * ny * nz]();
+	// Allocate dynamic memory of type double and size col*row
+	double* gridData = new double[col * row]();
+	printf("Total size of array = %ld\n", col * row);
 
 #pragma omp parallel default(none) num_threads(NUM_THREADS)\
-shared(nx, ny, nz, gridData, std::cout)
+shared(col, row, gridData, std::cout, nStencil)
 	{
 		unsigned id = omp_get_thread_num(); // This is a run-time library routine.
 		unsigned total = omp_get_num_threads();
 		//if (id==0) printf("Total threads executing the parallel region = %d\n", total);
 
-#pragma omp for schedule(static)
-		for (unsigned kk = 0; kk < nz; kk++)
-			for (unsigned jj = 0; jj < ny; jj++)
-				for (unsigned ii = 0; ii < nx; ii++) {
+#pragma omp for schedule(static,1)
+		for (unsigned jj = 0; jj < row; jj++) {
+			//printf("Row %d executed by thread %d\n", jj, omp_get_thread_num());
+			for (unsigned ii = 0; ii < col; ii++) {
 
-					unsigned long int idx = ii + nx * jj + nx * ny * kk;
+				unsigned long int idx = ii + col * jj;
 
-					double xx = xOrigin+ii*delta;
-					double yy = yOrigin+jj*delta;
-					double zz = zOrigin+kk*delta;
-					double dist2 = xx*xx+yy*yy+zz*zz;
+				double xx = xOrigin + ii * delta;
+				double yy = yOrigin + jj * delta;
+				double dist2 = xx * xx + yy * yy;
 
-					double value = 0;
+				double value = 0;
 
-					unsigned nStencil = 10;
-					for (unsigned itr = 1; itr <= nStencil; itr++) {
-						value += exp(-dist2*itr*itr);
-					}
+				for (unsigned itr = 1; itr <= nStencil; itr++) {
+					value += exp(-dist2 * itr * itr);
+				}
 
-					gridData[idx] = value;
-				} // End of nested for
+				gridData[idx] = value;
+			} // End of nested for
+		}
 
 	} // End of pragma
 	delete[] gridData;
 }
 
-int main() {
-	printf("Max no of threads = %d\n\n", omp_get_max_threads());
+int main(int argc, char *argv[]) {
+	char *p;
+	unsigned CACHE_SIZE, M, MAX_THREADS;
+
+	if (argc < 2) {
+		printf("The CACHE_SIZE argument is missing\n");
+		exit(0);
+	} else {
+		CACHE_SIZE = strtol(argv[1], &p, 10);
+		M = CACHE_SIZE / sizeof(double);
+		printf("CACHE_SIZE (in bytes) = %d\n", CACHE_SIZE);
+		printf("CACHE_SIZE / sizeof(double) = %d\n\n", M);
+	}
+
+	MAX_THREADS = omp_get_max_threads();
+	printf("Max no of threads = %d\n\n", MAX_THREADS);
 
 	mymisc::Stopwatch mainWatch, watch;
 	mainWatch.start();
 
+	// Best case
 	watch.start();
-	for (unsigned itr = 1; itr <= 100; itr++) {
-		case1(201, 101, 101, 1);
-	}
+	calc_exp(M, MAX_THREADS*100, MAX_THREADS, 100);
 	watch.stop();
-	watch.showTime("case1");
+	watch.showTime("Best");
+
+	// Worst case
+	watch.start();
+	calc_exp(M/32, 32*MAX_THREADS*100, MAX_THREADS, 100);
+	watch.stop();
+	watch.showTime("Worst");
 
 	mainWatch.stop();
 	mainWatch.showTime("End main");
