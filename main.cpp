@@ -58,16 +58,16 @@ shared(col, row, gridData, std::cout, nStencil)
 
 int main(int argc, char *argv[]) {
 	char *p;
-	unsigned CACHE_SIZE, M, MAX_THREADS;
+	unsigned CACHE_LINE_SIZE, M, MAX_THREADS;
 
 	if (argc < 2) {
-		printf("The CACHE_SIZE argument is missing\n");
+		printf("The CACHE_LINE_SIZE argument is missing\n");
 		exit(0);
 	} else {
-		CACHE_SIZE = strtol(argv[1], &p, 10);
-		M = CACHE_SIZE / sizeof(double);
-		printf("CACHE_SIZE (in bytes) = %d\n", CACHE_SIZE);
-		printf("CACHE_SIZE / sizeof(double) = %d\n\n", M);
+		CACHE_LINE_SIZE = strtol(argv[1], &p, 10);
+		M = CACHE_LINE_SIZE / sizeof(double);
+		printf("CACHE_LINE_SIZE (in bytes) = %d\n", CACHE_LINE_SIZE);
+		printf("CACHE_LINE_SIZE / sizeof(double) = %d\n\n", M);
 	}
 
 	MAX_THREADS = omp_get_max_threads();
@@ -78,13 +78,13 @@ int main(int argc, char *argv[]) {
 
 	// Best case
 	watch.start();
-	calc_exp(M, MAX_THREADS*100, MAX_THREADS, 100);
+	calc_exp(M, MAX_THREADS*1000, MAX_THREADS, 10000);
 	watch.stop();
 	watch.showTime("Best");
 
 	// Worst case
 	watch.start();
-	calc_exp(M/32, 32*MAX_THREADS*100, MAX_THREADS, 100);
+	calc_exp(M/2, 2*MAX_THREADS*1000, MAX_THREADS, 10000);
 	watch.stop();
 	watch.showTime("Worst");
 
